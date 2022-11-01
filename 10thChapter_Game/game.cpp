@@ -52,6 +52,9 @@ namespace Players {
 	};
 }
 
+const int maxScore = 21;
+const int dealerStopPoints = 17;
+
 struct Card {
 
 	Cards::Ranks rank{};
@@ -64,8 +67,38 @@ struct Player {
 
 	std::vector<Card> hand{};
 	Players::Types role;
+	std::string name;
 	int points = 0;
 };
+
+std::string recvInputFromUser(std::string& str) {
+
+	std::getline(std::cin >> std::ws,str);
+	return str;
+}
+
+char recvInputFromUser(char& value) {
+
+	while (true) {
+		std::cin >> value;
+		if (std::cin.fail()) {
+			std::cin.clear();
+			std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+			printf("Try again\n");
+		}
+		else {
+			std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+			return value;
+		}
+	}
+}
+
+std::string getName() {
+
+	printf("Enter your name: ");
+	std::string name;
+	return recvInputFromUser(name);
+}
 
 void printCard(const Card& card) {
 
@@ -183,89 +216,78 @@ bool makeDecision(char choice) {
 	return (choice == 'h') ? true : false;
 }
 
-char recvInputFromUser(char& value) {
+void printScore(Player& user) {
 
-	while (true) {
-		std::cin >> value;
-		if (std::cin.fail()) {
-			std::cin.clear();
-			std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-			printf("Try again\n");
-		}
-		else {
-			std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-			return value;
-		}
-	}
-}
-
-bool dealerMove(Player& dealer, deck_type& deck) {
-
-	dealer.hand.push_back(getCard(deck));
-	int index = static_cast<int>(dealer.hand.size())-1;
-	dealer.points += getCardValue(dealer.hand[index]);
-
-	printf("Croupier score is now: %d ( ", dealer.points);
-	printHand(dealer);
-	printf(") (dealerMove) \n");
-
-	if (dealer.points < 17) {
-		dealerMove(dealer,deck);
-	}
-	else {
-		if (dealer.points > 21) {
-			printf("Сongratulations! You're win! (dealerMove)\n");
-			return false;
-		}
-	}
-	return true;
-}
-
-bool playerMove(Player& user, Player& dealer, deck_type& deck) {
-
-	printf("Your score is now: %d ( ", user.points);
+	printf("%s's score now is: %d ( ",user.name.c_str(),user.points);
 	printHand(user);
-	printf(")\n");
-	printf("Croupier score is now: %d ( ", dealer.points);
-	printHand(dealer);
-	printf(") (playerMove)\n");
-	printf("Press 'h' if you want to get one more card");
-	printf("\n");
+	printf(")%s\n",(user.role == Players::croupier)?" - croupier":"");
+}
 
-	char choice = recvInputFromUser(choice);
-	if (makeDecision(choice)) {
-		user.hand.push_back(getCard(deck));
-		int index = static_cast<int>(user.hand.size())-1;
-		user.points += getCardValue(user.hand[index]);
-		if (user.points > 21) {
-			printf("You've lost! What a pity :(");
-			return false;
+void move(Player& user, deck_type& deck, bool& gameStatus) {
+
+	switch (user.role) {
+	case Players::player:
+		if (user.points > maxScore) {
+			gameStatus = false;
+		}
+		else if (user.points < maxScore) {
+			printf("Press 'h' if you want to get one more card or press anything in other way");
+			printf("\n");
+			char choice = recvInputFromUser(choice);
+			if (makeDecision(choice)) {
+				user.hand.push_back(getCard(deck));
+				int index = static_cast<int>(user.hand.size())-1;
+				user.points += getCardValue(user.hand[index]);
+				printScore(user);
+				move(user,deck,gameStatus);
+			}
+			else {
+				printf("\n--- Move goes to next player... ---\n\n");
+			}
 		}
 		else {
-			playerMove(user,dealer,deck);
+			printf("\nYou get exactly %d points. It's enough\n",maxScore);
+			printf("--- Move goes to next player... ---\n\n");
+		}
+		break;
+	case Players::croupier:
+		if (user.points < dealerStopPoints) {
+			user.hand.push_back(getCard(deck));
+			int index = static_cast<int>(user.hand.size())-1;
+			user.points += getCardValue(user.hand[index]);
+			printScore(user);
+			move(user,deck,gameStatus);
+		}
+		break;
+	default:
+		break;
+	}
+}
+
+bool playBlackjack(Player& user, Player& dealer, deck_type& deck) {
+
+	printScore(user);
+	printScore(dealer);
+
+	bool gameStatus = true;
+	move(user,deck,gameStatus);
+	if (gameStatus) {
+		move(dealer,deck,gameStatus);
+		if (user.points <= dealer.points) {
+			gameStatus = false;
+			if (dealer.points > maxScore) {
+				gameStatus = true;
+			}
 		}
 	}
-	else {
-		printf("\n\tCroupier moves now\n\n");
-	}
-	return true;
+	return gameStatus;
 }
 
-void compareResults(Player& user, Player& dealer) {
+void printGameOverMsg(bool gameStatus) {
 
-	if (user.points > dealer.points) {
-		printf("Сongratulations! You're win! (compareResults)\n");
-	}
-	else {
-		printf("You've lost! What a pity :( (compareResults)");
-	}
-}
-
-void playBlackjack(Player& user, Player& dealer, deck_type& deck) {
-
-	if (!playerMove(user,dealer,deck)) return;
-	if (!dealerMove(dealer,deck)) return;
-	compareResults(user,dealer);
+	printf("%s",(gameStatus)
+		? "\n\tСongratulations! You're win!\n\n"
+		: "\n\tYou've lost! What a pity :(\n\n");
 }
 
 int main() {
@@ -278,23 +300,22 @@ int main() {
 
 	Player croupier;
 	croupier.role = Players::croupier;
+	croupier.name = "Mr.Dealer";
 	deal(croupier,deck);
 	croupier.points = handScore(croupier.hand);
 
 	Player player1;
 	player1.role = Players::player;
+	player1.name = getName();
+	printf("\n");
 	deal(player1,deck);
 	player1.points = handScore(player1.hand);
 
-	playBlackjack(player1,croupier,deck);
-
-	printf("\n\ncroupier hand size is %d\n",static_cast<int>(croupier.hand.size()));
-	printHand(croupier);
-	printf("\ncroupier hand SCORE is %d\n\n",croupier.points);
-
-	printf("\nplayer1 hand size is %d\n",static_cast<int>(player1.hand.size()));
-	printHand(player1);
-	printf("\nplayer1 hand SCORE is %d\n\n",player1.points);
+	bool gameStatus = playBlackjack(player1,croupier,deck);
+	printGameOverMsg(gameStatus);
+	printf("Final results are:\n\n%15s%15d\n%15s%15d\n",
+			player1.name.c_str(),player1.points,
+			croupier.name.c_str(),croupier.points);
 
 	return 0;
 }
