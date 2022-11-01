@@ -52,6 +52,15 @@ namespace Players {
 	};
 }
 
+namespace Game {
+
+	enum Results {
+		win,
+		lose,
+		tie
+	};
+}
+
 const int maxScore = 21;
 const int dealerStopPoints = 17;
 const int aceDiff = 10;
@@ -279,30 +288,48 @@ void move(Player& user, deck_type& deck, bool& gameStatus) {
 	}
 }
 
-bool playBlackjack(Player& user, Player& dealer, deck_type& deck) {
+Game::Results playBlackjack(Player& user, Player& dealer, deck_type& deck) {
 
 	printScore(dealer);
 	printScore(user);
 
 	bool gameStatus = true;
+	Game::Results result;
+
 	move(user,deck,gameStatus);
 	if (gameStatus) {
 		move(dealer,deck,gameStatus);
-		if (user.points <= dealer.points) {
+		if (user.points < dealer.points) {
 			gameStatus = false;
 			if (dealer.points > maxScore) {
 				gameStatus = true;
 			}
 		}
 	}
-	return gameStatus;
+
+	(gameStatus) ? result = Game::Results::win : result = Game::Results::lose;
+	if (user.points == dealer.points) {
+		result = Game::Results::tie;
+	}
+	return result;
 }
 
-void printGameOverMsg(bool gameStatus) {
+void printGameOverMsg(Game::Results gameStatus) {
 
-	printf("%s",(gameStatus)
-		? "\n\tСongratulations! You're win!\n\n"
-		: "\n\tYou've lost! What a pity :(\n\n");
+	switch (gameStatus) {
+	case Game::Results::win:
+		printf("\n\tСongratulations! You're win!\n\n");
+		break;
+	case Game::Results::lose:
+		printf("\n\tYou've lost! What a pity :(\n\n");
+		break;
+	case Game::Results::tie:
+		printf("\n\nTie! Good luck next time! :D\n\n");
+		break;
+	default:
+		printf("\n\nUnknown situation O_o\n\n");
+		break;
+	}
 }
 
 int main() {
@@ -326,7 +353,7 @@ int main() {
 	deal(player1,deck);
 	player1.points = handScore(player1.hand);
 
-	bool gameStatus = playBlackjack(player1,croupier,deck);
+	Game::Results gameStatus = playBlackjack(player1,croupier,deck);
 	printGameOverMsg(gameStatus);
 	printf("Final results are:\n\n%15s%15d\n%15s%15d\n",
 			player1.name.c_str(),player1.points,
