@@ -54,6 +54,7 @@ namespace Players {
 
 const int maxScore = 21;
 const int dealerStopPoints = 17;
+const int aceDiff = 10;
 
 struct Card {
 
@@ -162,7 +163,7 @@ void printHand(Player& user) {
 
 void shuffleDeck(deck_type& deck) {
 
-	std::mt19937 mt{ static_cast<std::mt19937::result_type>(std::time(nullptr)) };
+	static std::mt19937 mt{ static_cast<std::mt19937::result_type>(std::time(nullptr)) };
 	std::shuffle(deck.begin(), deck.end(), mt);
 }
 
@@ -189,8 +190,19 @@ int getCardValue(Card& card) {
 int handScore(std::vector<Card>& hand) {
 
 	int total = 0;
+	int aces = 0;
+
 	for (Card i: hand) {
+		if (i.rank == Cards::rankAce) {
+			++aces;
+		}
 		total += getCardValue(i);
+	}
+	if (total > maxScore) {
+		while (aces > 0) {
+			total = total - aceDiff;
+			--aces;
+		}
 	}
 	return total;
 }
@@ -198,6 +210,11 @@ int handScore(std::vector<Card>& hand) {
 Card getCard(deck_type& deck) {
 
 	static int counter = 0;
+	if (counter == (Cards::numberOfCards+1)) {
+		printf("Deck is empty. It will shuffled and starts from beginning.");
+		shuffleDeck(deck);
+		counter = 0;
+	}
 	++counter;
 
 	return deck[counter-1];
@@ -236,8 +253,7 @@ void move(Player& user, deck_type& deck, bool& gameStatus) {
 			char choice = recvInputFromUser(choice);
 			if (makeDecision(choice)) {
 				user.hand.push_back(getCard(deck));
-				int index = static_cast<int>(user.hand.size())-1;
-				user.points += getCardValue(user.hand[index]);
+				user.points = handScore(user.hand);
 				printScore(user);
 				move(user,deck,gameStatus);
 			}
@@ -253,8 +269,7 @@ void move(Player& user, deck_type& deck, bool& gameStatus) {
 	case Players::croupier:
 		if (user.points < dealerStopPoints) {
 			user.hand.push_back(getCard(deck));
-			int index = static_cast<int>(user.hand.size())-1;
-			user.points += getCardValue(user.hand[index]);
+			user.points = handScore(user.hand);
 			printScore(user);
 			move(user,deck,gameStatus);
 		}
@@ -266,8 +281,8 @@ void move(Player& user, deck_type& deck, bool& gameStatus) {
 
 bool playBlackjack(Player& user, Player& dealer, deck_type& deck) {
 
-	printScore(user);
 	printScore(dealer);
+	printScore(user);
 
 	bool gameStatus = true;
 	move(user,deck,gameStatus);
