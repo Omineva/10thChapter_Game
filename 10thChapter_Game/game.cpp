@@ -121,7 +121,7 @@ void printCard(const Card& card) {
 	case Cards::rank7:		printf("7");	break;
 	case Cards::rank8:		printf("8");	break;
 	case Cards::rank9:		printf("9");	break;
-	case Cards::rank10:		printf("10");	break;
+	case Cards::rank10:		printf("T");	break;
 	case Cards::rankJack:	printf("J");	break;
 	case Cards::rankQueen:	printf("Q");	break;
 	case Cards::rankKing:	printf("K");	break;
@@ -150,7 +150,7 @@ void createDeck(deck_type& deck) {
 	}
 }
 
-void printDeck(deck_type& deck) {
+void printDeck(const deck_type& deck) {
 
 	int counter = 0;
 	for (Card i: deck) {
@@ -160,13 +160,11 @@ void printDeck(deck_type& deck) {
 	}
 }
 
-void printHand(Player& user) {
+void printHand(const Player& user) {
 
-	int counter = 0;
-	for (int i=0; i<static_cast<int>(user.hand.size()); ++i) {
+	for (int i=0; i < static_cast<int>(user.hand.size()); ++i) {
 		printCard(user.hand[i]);
-		++counter;
-		(counter%13 == 0) ? printf(" \n") : printf(" ");
+		printf(" ");
 	}
 }
 
@@ -176,7 +174,7 @@ void shuffleDeck(deck_type& deck) {
 	std::shuffle(deck.begin(), deck.end(), mt);
 }
 
-int getCardValue(Card& card) {
+int getCardValue(const Card& card) {
 
 	switch(card.rank) {
 	case Cards::rank2:		return 2;
@@ -196,7 +194,7 @@ int getCardValue(Card& card) {
 	}
 }
 
-int handScore(std::vector<Card>& hand) {
+int handScore(const std::vector<Card>& hand) {
 
 	int total = 0;
 	int aces = 0;
@@ -207,20 +205,18 @@ int handScore(std::vector<Card>& hand) {
 		}
 		total += getCardValue(i);
 	}
-	if (total > maxScore) {
-		while (aces > 0) {
-			total = total - aceDiff;
-			--aces;
-		}
+
+	while (total > maxScore && aces > 0) {
+		total -= aceDiff;
+		--aces;
 	}
 	return total;
 }
 
 Card getCard(deck_type& deck) {
 
-	static int counter = 0;
+	static int counter = Cards::numberOfCards+1;
 	if (counter == (Cards::numberOfCards+1)) {
-		printf("Deck is empty. It will shuffled and starts from beginning.");
 		shuffleDeck(deck);
 		counter = 0;
 	}
@@ -242,7 +238,7 @@ bool makeDecision(char choice) {
 	return (choice == 'h') ? true : false;
 }
 
-void printScore(Player& user) {
+void printScore(const Player& user) {
 
 	printf("%s's score now is: %d ( ",user.name.c_str(),user.points);
 	printHand(user);
@@ -336,9 +332,6 @@ int main() {
 
 	deck_type deck{};
 	createDeck(deck);
-
-	shuffleDeck(deck);
-//	printDeck(deck);
 
 	Player croupier;
 	croupier.role = Players::croupier;
